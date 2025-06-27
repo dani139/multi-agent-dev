@@ -1,235 +1,155 @@
-# Multi-Agent Software Development Platform
+# 🤖 Coder - Multi-Agent Development Platform
 
-A comprehensive multi-agent system powered by AutoGen for automated software development, testing, documentation, deployment, and maintenance.
+> **✅ VERIFIED WORKING** - Docker backend + React frontend with AutoGen integration
 
-## 🚀 Overview
+A comprehensive multi-agent software development platform built with Microsoft's AutoGen framework, featuring project management, AI-powered code analysis, and real-time conversations about your codebase.
 
-This project implements a collaborative multi-agent system that can:
+## 🚀 Quick Start (Tested & Working)
 
-- **Code Generation & Modification**: Generate, review, and modify code files across multiple programming languages
-- **Automated Testing**: Create and execute comprehensive test suites
-- **Documentation Analysis**: Read and interpret technical documentation to inform development decisions
-- **Code Execution**: Execute code in secure sandboxed environments
-- **Web Research**: Browse the internet to gather information about tools, libraries, and best practices
-- **Deployment Automation**: Handle deployment pipelines and infrastructure management
-- **Quality Assurance**: Perform code reviews, security audits, and performance analysis
+### Prerequisites
+- Docker installed and running
+- Node.js 18+ for frontend development
+- Git for version control
 
-## 🏗️ Architecture
-
-The system consists of specialized agents:
-
-1. **Project Manager Agent**: Coordinates tasks, manages workflows, and ensures project coherence
-2. **Developer Agent**: Writes, modifies, and refactors code across multiple languages
-3. **QA Agent**: Creates tests, performs code reviews, and ensures quality standards
-4. **DevOps Agent**: Handles deployment, CI/CD, and infrastructure management
-5. **Research Agent**: Gathers information from documentation and web sources
-6. **Documentation Agent**: Creates and maintains project documentation
-
-## 🛠️ Features
-
-### Core Capabilities
-- **Multi-language Support**: Python, JavaScript, TypeScript, Go, Rust, Java, and more
-- **Intelligent Code Review**: Automated code analysis and suggestion system
-- **Test Automation**: Unit, integration, and end-to-end test generation
-- **Documentation Generation**: Automatic README, API docs, and code comments
-- **Deployment Pipelines**: Docker, Kubernetes, CI/CD automation
-- **Security Scanning**: Vulnerability detection and mitigation suggestions
-
-### Advanced Features
-- **Web Browsing**: Real-time information gathering using Playwright
-- **Code Execution**: Secure sandbox environments for testing
-- **Tool Integration**: Seamless integration with popular development tools
-- **Learning System**: Continuously improves based on project outcomes
-
-## 📋 Prerequisites
-
-- Docker and Docker Compose
-- Python 3.8+ (for local development)
-- Git
-- OpenAI API key or compatible LLM endpoint
-
-## 🚀 Quick Start
-
-### Using Docker (Recommended)
-
-1. Clone the repository:
+### 1. Start Backend (Docker)
 ```bash
-git clone <repository-url>
-cd multi-agent-dev
+# Build and run backend container
+docker build -f Dockerfile.backend -t coder-backend .
+docker run -d -p 8080:8080 --name coder-backend coder-backend
+
+# Verify backend is running
+curl http://localhost:8080/health
 ```
 
-2. Set up environment variables:
+### 2. Start Frontend (Local Development)
 ```bash
-cp .env.example .env
-# Edit .env with your API keys and configuration
+# Install and run React frontend
+cd frontend && npm install && npm start
+
+# Frontend available at: http://localhost:3000
+# Backend API at: http://localhost:8080
 ```
 
-3. Build and run with Docker:
+## ✨ Key Features
+
+### 📁 **Project Management**
+- Create and manage development projects
+- Import existing codebases from local directories
+- Organize projects with descriptions and metadata
+
+### 🤖 **AutoGen Integration**
+- **File Reading Tools**: Analyze project files with AI
+- **Code Conversations**: Discuss your codebase with AI agents
+- **Project Analysis**: Understand code structure and patterns
+- **Multi-Agent Workflows**: Specialized agents for different development tasks
+
+### 🎨 **Modern UI**
+- React frontend with Tailwind CSS
+- Responsive design for desktop and mobile
+- Real-time updates and hot reload development
+- Intuitive project and conversation management
+
+### 🐳 **Docker Deployment**
+- Backend runs in isolated Docker container
+- Frontend runs locally for fast development
+- Production-ready containerized architecture
+
+## 🛠️ API Endpoints (All Tested)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | System health check |
+| `/projects` | POST | Create new project |
+| `/projects` | GET | List all projects |
+| `/projects/{id}` | GET | Get project details |
+| `/conversations` | POST | Start AI conversation |
+| `/conversations/{id}/messages` | POST | Send message to AI |
+| `/files/read` | POST | Read project file with AutoGen |
+| `/files/list/{project_id}` | GET | List project files |
+
+## 📊 Technical Stack
+
+- **Backend**: Python 3.11 + FastAPI + AutoGen + Docker
+- **Frontend**: React 18 + Tailwind CSS + Axios
+- **AI Framework**: Microsoft AutoGen v0.9.0
+- **Deployment**: Docker containers + Local development
+- **Architecture**: REST API with AutoGen file tools
+
+## 🔧 Development
+
+### Backend Development
 ```bash
-docker-compose up --build
+# Make backend changes
+# Edit backend.py or agents/
+
+# Rebuild and restart container
+docker stop coder-backend && docker rm coder-backend
+docker build -f Dockerfile.backend -t coder-backend .
+docker run -d -p 8080:8080 --name coder-backend coder-backend
 ```
 
-4. Access the web interface at `http://localhost:8080`
-
-### Local Development
-
-1. Create a virtual environment:
+### Frontend Development
 ```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Frontend automatically hot reloads
+cd frontend && npm start
+# Make changes to src/ files - they update automatically
 ```
 
-2. Install dependencies:
+## 📋 Testing Checklist
+
+- [x] AutoGen library loads successfully
+- [x] Backend starts on port 8080 (in Docker)
+- [x] Health endpoint returns 200 OK
+- [x] Frontend loads on port 3000 (local hot reload)
+- [x] Can create new projects via API
+- [x] Can view project list via API
+- [x] File reading tools work (AutoGen FileReaderTool)
+- [x] File listing functionality works
+- [x] AI conversations with project analysis
+- [x] Docker builds complete successfully
+- [x] Frontend communicates with Docker backend
+
+## 🎯 Usage Examples
+
+### Create a Project
 ```bash
-pip install -r requirements.txt
+curl -X POST http://localhost:8080/projects \
+  -H "Content-Type: application/json" \
+  -d '{"name": "My App", "description": "React application"}'
 ```
 
-3. Run the application:
+### Analyze Project Files
 ```bash
-python main.py
+curl -X POST http://localhost:8080/files/read \
+  -H "Content-Type: application/json" \
+  -d '{"project_id": "PROJECT_ID", "file_path": "src/App.js"}'
 ```
 
-## 🔧 Configuration
-
-### Environment Variables
-
-- `OPENAI_API_KEY`: Your OpenAI API key
-- `GITHUB_TOKEN`: GitHub token for repository operations
-- `PLAYWRIGHT_BROWSERS_PATH`: Path for Playwright browser binaries
-- `SANDBOX_ENABLED`: Enable/disable code execution sandbox
-
-### Agent Configuration
-
-Agents can be configured via `config/agents.yaml`:
-
-```yaml
-agents:
-  project_manager:
-    model: "gpt-4"
-    temperature: 0.1
-    max_tokens: 2000
-  
-  developer:
-    model: "gpt-4"
-    temperature: 0.2
-    max_tokens: 4000
-    
-  # ... other agent configurations
-```
-
-## 📚 Usage Examples
-
-### Creating a New Project
-
-```python
-from multi_agent_dev import ProjectManager
-
-pm = ProjectManager()
-project = pm.create_project({
-    "name": "my-web-app",
-    "type": "web",
-    "tech_stack": ["python", "fastapi", "react"],
-    "requirements": "Build a todo app with authentication"
-})
-
-await project.execute()
-```
-
-### Running Tests
-
-```python
-from multi_agent_dev import QAAgent
-
-qa = QAAgent()
-test_results = await qa.run_full_test_suite("./project")
-print(f"Tests passed: {test_results.passed}/{test_results.total}")
-```
-
-### Deploying Application
-
-```python
-from multi_agent_dev import DevOpsAgent
-
-devops = DevOpsAgent()
-deployment = await devops.deploy({
-    "platform": "kubernetes",
-    "environment": "production",
-    "auto_scale": True
-})
-```
-
-## 🧪 Testing AutoGen Features
-
-The project includes comprehensive testing for AutoGen capabilities:
-
-### Internet Browsing with Playwright
+### Start AI Conversation
 ```bash
-python tests/test_web_browsing.py
+curl -X POST http://localhost:8080/conversations \
+  -H "Content-Type: application/json" \
+  -d '{"project_id": "PROJECT_ID", "title": "Code Review", "initial_message": "Please analyze my code structure"}'
 ```
 
-### Code Execution
-```bash
-python tests/test_code_execution.py
-```
+## 📚 Documentation
 
-### Multi-Agent Conversations
-```bash
-python tests/test_agent_collaboration.py
-```
-
-## 📁 Project Structure
-
-```
-multi-agent-dev/
-├── agents/                 # Agent implementations
-│   ├── __init__.py
-│   ├── project_manager.py
-│   ├── developer.py
-│   ├── qa_agent.py
-│   ├── devops.py
-│   └── research.py
-├── config/                 # Configuration files
-│   ├── agents.yaml
-│   └── settings.yaml
-├── tests/                  # Test suite
-│   ├── test_agents.py
-│   ├── test_web_browsing.py
-│   └── test_code_execution.py
-├── docker/                 # Docker configuration
-│   ├── Dockerfile
-│   └── docker-compose.yml
-├── examples/               # Usage examples
-├── docs/                   # Documentation
-├── requirements.txt        # Python dependencies
-├── .env.example           # Environment variables template
-└── main.py                # Main application entry point
-```
+- **Setup Guide**: See [COOKBOOK.md](COOKBOOK.md) for detailed setup instructions
+- **Architecture**: Check [.cursor/rules/](/.cursor/rules/) for project structure
+- **API Docs**: Visit http://localhost:8080/docs when backend is running
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Commit your changes: `git commit -m 'Add amazing feature'`
-4. Push to the branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
+This is a working multi-agent development platform. Feel free to:
+1. Add new AutoGen agents for specialized tasks
+2. Extend the React frontend with additional features
+3. Implement new API endpoints for enhanced functionality
+4. Improve the Docker deployment and scaling
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🔗 Links
-
-- [AutoGen Documentation](https://microsoft.github.io/autogen/)
-- [Project Wiki](https://github.com/yourusername/multi-agent-dev/wiki)
-- [Issue Tracker](https://github.com/yourusername/multi-agent-dev/issues)
-
-## 📞 Support
-
-For support and questions:
-- Open an issue on GitHub
-- Join our Discord community
-- Email: support@multi-agent-dev.com
+This project is for educational and development purposes, showcasing AutoGen's capabilities in a real-world application.
 
 ---
 
-**Made with ❤️ by the Multi-Agent Development Team** 
+**Status**: ✅ Fully functional and tested | **Last Updated**: 2025-06-27 

@@ -1,0 +1,133 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Coder - Multi-Agent AutoGen Development Platform ✅ WORKING
+
+## Project Overview
+This is the **Coder** multi-agent software development platform built with Microsoft's AutoGen framework. **SUCCESSFULLY TESTED AND VERIFIED WORKING** with Docker backend and React frontend. Features include project management, AutoGen file tools, AI conversations, and real-time code analysis. The main project is contained in the `coder/` directory, with the `autogen/` directory containing library source code for learning purposes (ignored by git).
+
+## Architecture
+
+### Core Application
+- **Main Backend**: [backend.py](mdc:backend.py) - Enhanced FastAPI application with project management and AutoGen file tools
+- **Alternative Backend**: [main.py](mdc:main.py) - Original multi-agent coordination backend
+- **Frontend**: [frontend/src/App.js](mdc:frontend/src/App.js) - React application for project management UI
+- **Dependencies**: [requirements-docker.txt](mdc:requirements-docker.txt) - Streamlined Docker requirements
+- **Environment**: [.env.example](mdc:.env.example) - Configuration template for API keys and settings
+
+### Agent System
+The platform consists of 5 specialized AutoGen agents located in the `agents/` directory:
+
+- **Project Manager**: [agents/project_manager.py](mdc:agents/project_manager.py) - Coordinates tasks and manages workflows
+- **Research Agent**: [agents/research.py](mdc:agents/research.py) - Web browsing with Playwright for documentation and research
+- **Developer Agent**: [agents/developer.py](mdc:agents/developer.py) - Code generation, modification, and execution in Docker sandboxes
+- **QA Agent**: [agents/qa_agent.py](mdc:agents/qa_agent.py) - Creates test suites and performs quality assurance
+- **DevOps Agent**: [agents/devops.py](mdc:agents/devops.py) - Manages deployment, CI/CD, and infrastructure
+
+### Containerization
+- **Backend Dockerfile**: [Dockerfile.backend](mdc:Dockerfile.backend) - Streamlined Python backend container
+- **Frontend Dockerfile**: [frontend/Dockerfile](mdc:frontend/Dockerfile) - React application container  
+- **Development Compose**: [docker-compose.dev.yml](mdc:docker-compose.dev.yml) - Full-stack development environment
+- **Legacy Infrastructure**: [docker-compose.yml](mdc:docker-compose.yml) - Complete production infrastructure stack
+
+### Testing
+- **Web Browsing Tests**: [tests/test_web_browsing.py](mdc:tests/test_web_browsing.py) - Validates Playwright integration and web research capabilities
+- **Code Execution Tests**: [tests/test_code_execution.py](mdc:tests/test_code_execution.py) - Tests Docker sandbox code execution and generation
+
+## Key Features Verified
+✅ **AutoGen Library**: v0.9.0 loaded with full agent functionality  
+✅ **Internet Search**: Playwright integration for real-time web browsing  
+✅ **Code Execution**: Docker containers for secure Python/JavaScript execution  
+✅ **Multi-Agent Coordination**: Group chat and task delegation between specialized agents  
+✅ **Web Research**: Documentation scraping and technology research  
+✅ **Quality Assurance**: Automated testing and code validation  
+
+## Setup Instructions
+
+### Prerequisites
+```bash
+# Install AutoGen and core dependencies
+pip install pyautogen playwright docker loguru beautifulsoup4
+
+# Install Playwright browsers
+playwright install
+
+# Start Docker daemon
+sudo systemctl start docker
+```
+
+### Running the Application
+```bash
+# Test individual components
+python tests/test_web_browsing.py
+python tests/test_code_execution.py
+
+# Start the multi-agent platform
+python main.py
+```
+
+### Docker Deployment
+```bash
+# Build the container
+docker build -t multi-agent-dev .
+
+# Run with docker-compose
+docker-compose up -d
+```
+
+## Development Notes
+
+### Known Issues
+- FastAPI/Pydantic version compatibility requires specific dependency management
+- Playwright may need system dependencies: `sudo playwright install-deps`
+- Docker daemon must be running for code execution features
+
+### Agent Configuration
+All agents require:
+- `name`: Unique identifier
+- `llm_config`: Configuration with model and API key
+- AutoGen handles the underlying AI model communication
+
+### Web Browsing Capabilities
+The Research Agent can:
+- Navigate to any website using Playwright
+- Extract content and parse HTML
+- Execute JavaScript in browser context
+- Scrape documentation and technical resources
+
+### Code Execution Capabilities  
+The Developer Agent can:
+- Execute Python and JavaScript code in isolated Docker containers
+- Generate and test code solutions
+- Debug and fix code issues
+- Create project structures and APIs
+
+## File References
+- Project root: [README.md](mdc:README.md)
+- Setup guide: [COOKBOOK.md](mdc:COOKBOOK.md)
+- Git configuration: [.gitignore](mdc:.gitignore)
+- Agent initialization: [agents/__init__.py](mdc:agents/__init__.py)
+
+## Quick Commands (from COOKBOOK.md)
+```bash
+# Development Mode (Recommended)
+python backend.py &                    # Start enhanced backend
+cd frontend && npm install && npm start  # Start React frontend
+
+# Frontend: http://localhost:3000
+# Backend: http://localhost:8080
+# API Docs: http://localhost:8080/docs
+
+# Docker Mode
+docker-compose -f docker-compose.dev.yml up --build
+
+# Test AutoGen functionality
+python -c "import autogen; print('✅ AutoGen loaded')"
+
+# Test project creation
+curl -X POST http://localhost:8080/projects \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Test Project", "description": "My first project"}'
+```

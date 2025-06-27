@@ -82,9 +82,7 @@ def initialize_agents():
             "config_list": [
                 {
                     "model": "gpt-4",
-                    "api_key": api_key,
-                    "temperature": float(os.getenv("TEMPERATURE", "0.1")),
-                    "max_tokens": int(os.getenv("MAX_TOKENS", "4000"))
+                    "api_key": api_key
                 }
             ]
         }
