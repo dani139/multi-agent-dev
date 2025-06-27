@@ -64,7 +64,27 @@ class FileReadRequest(BaseModel):
     project_id: str
     file_path: str
 
-# AutoGen File Reading Tool
+class FileEditRequest(BaseModel):
+    project_id: str
+    file_path: str
+    content: str
+    operation: Optional[str] = "replace"  # replace, append, prepend
+
+class FileSearchReplaceRequest(BaseModel):
+    project_id: str
+    file_path: str
+    search_text: str
+    replace_text: str
+
+class FileCreateRequest(BaseModel):
+    project_id: str
+    file_path: str
+    content: str
+
+class DirectoryBrowseRequest(BaseModel):
+    path: str
+
+# AutoGen File Tools
 class FileReaderTool:
     """AutoGen tool for reading project files"""
     
@@ -112,6 +132,91 @@ class FileReaderTool:
         except Exception as e:
             return f"Error listing directory {directory}: {str(e)}"
 
+class FileEditorTool:
+    """AutoGen tool for editing project files"""
+    
+    def __init__(self, project_path: str):
+        self.project_path = Path(project_path)
+        
+    def edit_file(self, file_path: str, content: str, operation: str = "replace") -> str:
+        """Edit a file in the project directory"""
+        try:
+            full_path = self.project_path / file_path
+            
+            # Create directory if it doesn't exist
+            full_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            if operation == "replace":
+                # Replace entire file content
+                with open(full_path, 'w', encoding='utf-8') as f:
+                    f.write(content)
+                return f"✅ File {file_path} has been completely replaced"
+                
+            elif operation == "append":
+                # Append to file
+                with open(full_path, 'a', encoding='utf-8') as f:
+                    f.write("\n" + content)
+                return f"✅ Content appended to {file_path}"
+                
+            elif operation == "prepend":
+                # Prepend to file
+                existing_content = ""
+                if full_path.exists():
+                    with open(full_path, 'r', encoding='utf-8') as f:
+                        existing_content = f.read()
+                
+                with open(full_path, 'w', encoding='utf-8') as f:
+                    f.write(content + "\n" + existing_content)
+                return f"✅ Content prepended to {file_path}"
+                
+            else:
+                return f"❌ Unknown operation: {operation}. Use 'replace', 'append', or 'prepend'"
+                
+        except Exception as e:
+            return f"❌ Error editing file {file_path}: {str(e)}"
+    
+    def search_and_replace(self, file_path: str, search_text: str, replace_text: str) -> str:
+        """Search and replace text in a file"""
+        try:
+            full_path = self.project_path / file_path
+            if not full_path.exists():
+                return f"❌ File not found: {file_path}"
+            
+            with open(full_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            if search_text not in content:
+                return f"❌ Search text not found in {file_path}"
+            
+            new_content = content.replace(search_text, replace_text)
+            
+            with open(full_path, 'w', encoding='utf-8') as f:
+                f.write(new_content)
+            
+            return f"✅ Replaced '{search_text}' with '{replace_text}' in {file_path}"
+            
+        except Exception as e:
+            return f"❌ Error during search and replace in {file_path}: {str(e)}"
+    
+    def create_file(self, file_path: str, content: str) -> str:
+        """Create a new file"""
+        try:
+            full_path = self.project_path / file_path
+            
+            if full_path.exists():
+                return f"❌ File already exists: {file_path}"
+            
+            # Create directory if it doesn't exist
+            full_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            with open(full_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            
+            return f"✅ Created new file: {file_path}"
+            
+        except Exception as e:
+            return f"❌ Error creating file {file_path}: {str(e)}"
+
 def initialize_agents():
     """Initialize the AutoGen agents"""
     logger.info("Initializing enhanced multi-agent system...")
@@ -152,11 +257,22 @@ async def create_project_directory(project_id: str, project_name: str, local_pat
     project_dir = projects_dir / project_id
     
     if local_path and Path(local_path).exists():
-        # Copy from local path
-        if project_dir.exists():
-            shutil.rmtree(project_dir)
-        shutil.copytree(local_path, project_dir)
-        logger.info(f"Copied project from {local_path} to {project_dir}")
+        # Avoid recursion - don't copy if source contains destination
+        source_path = Path(local_path).resolve()
+        dest_path = project_dir.resolve()
+        
+        if dest_path.is_relative_to(source_path):
+            # Create symlink instead of copy to avoid recursion
+            if project_dir.exists():
+                shutil.rmtree(project_dir)
+            project_dir.symlink_to(source_path)
+            logger.info(f"Created symlink from {project_dir} to {source_path}")
+        else:
+            # Safe to copy
+            if project_dir.exists():
+                shutil.rmtree(project_dir)
+            shutil.copytree(local_path, project_dir, ignore=shutil.ignore_patterns('.*', '__pycache__'))
+            logger.info(f"Copied project from {local_path} to {project_dir}")
     else:
         # Create empty project structure
         project_dir.mkdir(exist_ok=True)
@@ -356,12 +472,13 @@ async def get_conversation(conversation_id: str):
 
 @app.post("/conversations/{conversation_id}/messages")
 async def send_message(conversation_id: str, message: ConversationMessage):
-    """Send a message in a conversation"""
+    """Send a message in a conversation with file tagging and editing support"""
     if conversation_id not in conversations_registry:
         raise HTTPException(status_code=404, detail="Conversation not found")
     
     conversation = conversations_registry[conversation_id]
     project_id = conversation["project_id"]
+    project_path = projects_registry[project_id]["path"]
     
     # Add user message
     user_message = {
@@ -372,36 +489,129 @@ async def send_message(conversation_id: str, message: ConversationMessage):
     }
     conversation["messages"].append(user_message)
     
-    # Generate AI response
+    # Process message for file operations
     try:
-        ai_response = f"I've received your message: '{message.message}'. As a project analyst, I can help you analyze files, understand code structure, and provide insights about your project. What specific aspect would you like me to examine?"
+        file_tool = FileReaderTool(project_path)
+        editor_tool = FileEditorTool(project_path)
         
-        # If message contains file-related keywords, offer file operations
-        if any(keyword in message.message.lower() for keyword in ['file', 'code', 'read', 'analyze', 'show']):
-            project_path = projects_registry[project_id]["path"]
-            file_tool = FileReaderTool(project_path)
-            file_list = file_tool.list_files()
-            ai_response += f"\n\nAvailable files in your project:\n{file_list}"
+        # Extract file tags (@filename pattern)
+        import re
+        file_tags = re.findall(r'@([^\s]+)', message.message)
+        
+        ai_response = ""
+        
+        # Handle file editing requests
+        if any(keyword in message.message.lower() for keyword in ['edit', 'modify', 'change', 'update', 'fix']):
+            if file_tags:
+                ai_response = "I can help you edit files! Here's what I found:\n\n"
+                for file_tag in file_tags:
+                    file_content = file_tool.read_file(file_tag)
+                    ai_response += f"📄 **{file_tag}**:\n```\n{file_content}\n```\n\n"
+                
+                ai_response += "To edit a file, you can:\n"
+                ai_response += "• Ask me to modify specific parts\n"
+                ai_response += "• Request search and replace operations\n"
+                ai_response += "• Tell me what changes you want to make\n\n"
+                ai_response += "Example: 'Replace the function name in @app.py from old_name to new_name'"
+            else:
+                ai_response = "I can help you edit files! Please tag a file with @ (like @filename.py) and tell me what changes you want to make."
+        
+        # Handle file reading requests
+        elif any(keyword in message.message.lower() for keyword in ['show', 'read', 'display', 'view']):
+            if file_tags:
+                ai_response = "Here are the files you requested:\n\n"
+                for file_tag in file_tags:
+                    file_content = file_tool.read_file(file_tag)
+                    ai_response += f"📄 **{file_tag}**:\n```\n{file_content}\n```\n\n"
+            else:
+                file_list = file_tool.list_files()
+                ai_response = f"I can show you files! Here are the available files:\n\n{file_list}\n\nTag any file with @ to view it (like @README.md)"
+        
+        # Handle analysis requests
+        elif any(keyword in message.message.lower() for keyword in ['analyze', 'examine', 'review', 'check']):
+            if file_tags:
+                ai_response = "📊 **File Analysis**:\n\n"
+                for file_tag in file_tags:
+                    file_content = file_tool.read_file(file_tag)
+                    # Simple analysis
+                    lines = file_content.count('\n')
+                    size = len(file_content)
+                    
+                    ai_response += f"📄 **{file_tag}**:\n"
+                    ai_response += f"• Lines: {lines}\n"
+                    ai_response += f"• Size: {size} characters\n"
+                    
+                    if file_tag.endswith('.py'):
+                        ai_response += "• Type: Python file\n"
+                        if 'def ' in file_content:
+                            functions = len(re.findall(r'def \w+', file_content))
+                            ai_response += f"• Functions: {functions}\n"
+                        if 'class ' in file_content:
+                            classes = len(re.findall(r'class \w+', file_content))
+                            ai_response += f"• Classes: {classes}\n"
+                    elif file_tag.endswith('.js'):
+                        ai_response += "• Type: JavaScript file\n"
+                        if 'function ' in file_content:
+                            functions = len(re.findall(r'function \w+', file_content))
+                            ai_response += f"• Functions: {functions}\n"
+                    
+                    ai_response += "\n"
+            else:
+                ai_response = "I can analyze files! Tag files with @ (like @app.py) to get detailed analysis."
+        
+        # Handle direct edit commands
+        elif 'replace' in message.message.lower() and file_tags:
+            # Try to extract search and replace patterns
+            replace_match = re.search(r'replace\s+["\'](.+?)["\']\s+with\s+["\'](.+?)["\']', message.message, re.IGNORECASE)
+            if replace_match:
+                search_text = replace_match.group(1)
+                replace_text = replace_match.group(2)
+                
+                ai_response = "🔧 **File Edit Results**:\n\n"
+                for file_tag in file_tags:
+                    result = editor_tool.search_and_replace(file_tag, search_text, replace_text)
+                    ai_response += f"📄 {file_tag}: {result}\n"
+            else:
+                ai_response = "To replace text, use the format: 'Replace \"old text\" with \"new text\" in @filename.py'"
+        
+        # Default response
+        if not ai_response:
+            ai_response = "I'm here to help with your project! You can:\n\n"
+            ai_response += "• **View files**: 'Show @README.md'\n"
+            ai_response += "• **Edit files**: 'Edit @app.py to add a new function'\n"
+            ai_response += "• **Analyze code**: 'Analyze @src/main.py'\n"
+            ai_response += "• **Replace text**: 'Replace \"old_function\" with \"new_function\" in @app.py'\n\n"
+            
+            if file_tags:
+                ai_response += "I see you tagged these files:\n"
+                for file_tag in file_tags:
+                    ai_response += f"• @{file_tag}\n"
+                ai_response += "\nWhat would you like me to do with them?"
+            else:
+                file_list = file_tool.list_files()
+                ai_response += f"Available files in your project:\n{file_list}"
         
         # Add AI response
         ai_message = {
             "id": str(uuid.uuid4()),
             "sender": "assistant",
             "content": ai_response,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
+            "file_tags": file_tags if file_tags else []
         }
         conversation["messages"].append(ai_message)
         
         return {
             "message_id": ai_message["id"],
-            "response": ai_response
+            "response": ai_response,
+            "file_tags": file_tags
         }
         
     except Exception as e:
         logger.error(f"Failed to generate AI response: {e}")
         
         # Fallback response
-        fallback_response = "I'm ready to help with your project. Please let me know what you'd like to discuss or analyze."
+        fallback_response = "I'm ready to help with your project. Tag files with @ and tell me what you'd like to do!"
         
         ai_message = {
             "id": str(uuid.uuid4()),
@@ -460,6 +670,218 @@ async def list_project_files(project_id: str, directory: str = ""):
         
     except Exception as e:
         logger.error(f"Failed to list files: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# New file editing endpoints
+@app.post("/files/edit")
+async def edit_file(request: FileEditRequest):
+    """Edit a file using AutoGen file editor"""
+    if request.project_id not in projects_registry:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    project = projects_registry[request.project_id]
+    project_path = project["path"]
+    
+    try:
+        editor_tool = FileEditorTool(project_path)
+        result = editor_tool.edit_file(request.file_path, request.content, request.operation)
+        
+        return {
+            "project_id": request.project_id,
+            "file_path": request.file_path,
+            "operation": request.operation,
+            "result": result
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to edit file: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/files/search-replace")
+async def search_replace_file(request: FileSearchReplaceRequest):
+    """Search and replace text in a file"""
+    if request.project_id not in projects_registry:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    project = projects_registry[request.project_id]
+    project_path = project["path"]
+    
+    try:
+        editor_tool = FileEditorTool(project_path)
+        result = editor_tool.search_and_replace(request.file_path, request.search_text, request.replace_text)
+        
+        return {
+            "project_id": request.project_id,
+            "file_path": request.file_path,
+            "result": result
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to search and replace: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/files/create")
+async def create_file(request: FileCreateRequest):
+    """Create a new file"""
+    if request.project_id not in projects_registry:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    project = projects_registry[request.project_id]
+    project_path = project["path"]
+    
+    try:
+        editor_tool = FileEditorTool(project_path)
+        result = editor_tool.create_file(request.file_path, request.content)
+        
+        return {
+            "project_id": request.project_id,
+            "file_path": request.file_path,
+            "result": result
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to create file: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/files/tree/{project_id}")
+async def get_file_tree(project_id: str):
+    """Get complete file tree structure for a project"""
+    if project_id not in projects_registry:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    project = projects_registry[project_id]
+    project_path = Path(project["path"])
+    
+    def build_tree(path: Path, prefix: str = "") -> dict:
+        """Recursively build file tree"""
+        tree = {
+            "name": path.name,
+            "path": str(path.relative_to(project_path)) if path != project_path else "",
+            "type": "directory" if path.is_dir() else "file",
+            "children": []
+        }
+        
+        if path.is_dir():
+            try:
+                for item in sorted(path.iterdir()):
+                    if not item.name.startswith('.'):
+                        tree["children"].append(build_tree(item, prefix + "  "))
+            except PermissionError:
+                pass
+        else:
+            tree["size"] = path.stat().st_size
+        
+        return tree
+    
+    try:
+        tree = build_tree(project_path)
+        return {
+            "project_id": project_id,
+            "tree": tree
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to build file tree: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/browse-directory")
+async def browse_local_directory(request: DirectoryBrowseRequest):
+    """Browse local filesystem directories for project import"""
+    try:
+        # Handle both Docker and local paths
+        path_str = request.path
+        if not path_str:
+            path_str = "/home"  # Default path
+            
+        path = Path(path_str).expanduser()
+        
+        # For Docker environment, limit to safe paths
+        if not path.exists():
+            # Try common default paths
+            for default_path in ["/home", "/tmp", "/app"]:
+                test_path = Path(default_path)
+                if test_path.exists() and test_path.is_dir():
+                    path = test_path
+                    break
+            else:
+                raise HTTPException(status_code=404, detail=f"Directory not found: {path_str}")
+        
+        if not path.is_dir():
+            raise HTTPException(status_code=400, detail="Path is not a directory")
+        
+        items = []
+        try:
+            for item in sorted(path.iterdir()):
+                # Skip hidden files and directories
+                if item.name.startswith('.'):
+                    continue
+                
+                try:
+                    item_info = {
+                        "name": item.name,
+                        "path": str(item),
+                        "type": "directory" if item.is_dir() else "file",
+                        "size": item.stat().st_size if item.is_file() else None,
+                        "modified": datetime.fromtimestamp(item.stat().st_mtime).isoformat()
+                    }
+                    items.append(item_info)
+                except (PermissionError, OSError):
+                    # Skip items we can't read
+                    continue
+        except PermissionError:
+            raise HTTPException(status_code=403, detail="Permission denied")
+        
+        # Get parent directory info
+        parent = None
+        if path.parent != path:
+            parent = {
+                "name": "..",
+                "path": str(path.parent),
+                "type": "directory"
+            }
+        
+        return {
+            "current_path": str(path),
+            "parent": parent,
+            "items": items,
+            "total": len(items)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to browse directory: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/files/autocomplete/{project_id}")
+async def get_file_autocomplete(project_id: str, query: str = ""):
+    """Get file names for autocomplete in chat"""
+    if project_id not in projects_registry:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    project = projects_registry[project_id]
+    project_path = Path(project["path"])
+    
+    try:
+        files = []
+        for item in project_path.rglob("*"):
+            if item.is_file() and not item.name.startswith('.'):
+                rel_path = str(item.relative_to(project_path))
+                if query.lower() in rel_path.lower():
+                    files.append({
+                        "path": rel_path,
+                        "name": item.name,
+                        "type": item.suffix[1:] if item.suffix else "file"
+                    })
+        
+        return {
+            "project_id": project_id,
+            "query": query,
+            "files": files[:20]  # Limit to 20 results
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get file autocomplete: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
