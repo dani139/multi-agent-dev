@@ -1,5 +1,130 @@
 ---
-description:
-globs:
+description: 
+globs: 
 alwaysApply: false
 ---
+# Successful Multi-Agent Platform Setup Guide
+
+## Project Overview
+This is a **VERIFIED WORKING** multi-agent development platform using Microsoft AutoGen with Docker backend and React frontend. The setup has been tested and is fully functional.
+
+## ✅ Working Architecture
+
+### Backend (Docker Container)
+- **Main Backend**: [backend.py](mdc:backend.py) - Enhanced FastAPI with AutoGen file tools
+- **Docker Setup**: [Dockerfile.backend](mdc:Dockerfile.backend) - Streamlined container build
+- **Dependencies**: [requirements-docker.txt](mdc:requirements-docker.txt) - Compatible versions
+- **Port**: 8080 (runs in Docker container)
+
+### Frontend (Local Development)
+- **React App**: [frontend/src/App.js](mdc:frontend/src/App.js) - Modern UI with project management
+- **Styling**: [frontend/src/App.css](mdc:frontend/src/App.css) - Tailwind CSS integration
+- **Config**: [frontend/tailwind.config.js](mdc:frontend/tailwind.config.js) - Tailwind setup
+- **Port**: 3000 (runs locally for hot reload)
+
+## 🚀 Verified Working Commands
+
+### Backend Setup (Docker)
+```bash
+# Build and run backend container
+docker build -f Dockerfile.backend -t coder-backend .
+docker run -d -p 8080:8080 --name coder-backend coder-backend
+
+# Test backend health
+curl http://localhost:8080/health
+```
+
+### Frontend Setup (Local)
+```bash
+# Install and run frontend
+cd frontend && npm install && npm start
+# Available at: http://localhost:3000
+```
+
+### API Testing (All Verified Working)
+```bash
+# Create project
+curl -X POST http://localhost:8080/projects \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Test Project", "description": "My project"}'
+
+# List projects
+curl http://localhost:8080/projects
+
+# List project files (AutoGen file tools)
+curl "http://localhost:8080/files/list/PROJECT_ID"
+
+# Read specific file
+curl -X POST http://localhost:8080/files/read \
+  -H "Content-Type: application/json" \
+  -d '{"project_id": "PROJECT_ID", "file_path": "README.md"}'
+
+# Create AI conversation
+curl -X POST http://localhost:8080/conversations \
+  -H "Content-Type: application/json" \
+  -d '{"project_id": "PROJECT_ID", "title": "Code Analysis", "initial_message": "Analyze my files"}'
+```
+
+## 🔧 Development Workflow
+
+### Daily Development
+1. **Start Backend**: `docker run -d -p 8080:8080 --name coder-backend coder-backend`
+2. **Start Frontend**: `cd frontend && npm start`
+3. **Develop**: Frontend hot reloads, backend in isolated container
+
+### Code Changes
+- **Backend Changes**: Rebuild Docker image and restart container
+- **Frontend Changes**: Automatic hot reload (no restart needed)
+- **Dependencies**: Update [requirements-docker.txt](mdc:requirements-docker.txt) for backend
+
+## 📁 Key Features Implemented
+
+### Project Management
+- Create projects with name and description
+- Import existing projects from local directories
+- List all projects with metadata
+- AutoGen file reading and analysis tools
+
+### AutoGen Integration
+- **File Tools**: Read, list, and analyze project files
+- **AI Conversations**: Discuss code with AutoGen agents
+- **Project Analysis**: Specialized agents for code understanding
+- **Real-time Processing**: Live file analysis and insights
+
+### API Endpoints (All Working)
+- `GET /health` - System health check
+- `POST /projects` - Create new project
+- `GET /projects` - List all projects
+- `GET /projects/{id}` - Get project details
+- `POST /conversations` - Start AI conversation
+- `POST /conversations/{id}/messages` - Send message to AI
+- `POST /files/read` - Read project file with AutoGen
+- `GET /files/list/{project_id}` - List project files
+
+## 🐛 Troubleshooting
+
+### Known Issues
+- **Local Backend**: Dependency conflicts with system Python packages
+- **Solution**: Always use Docker backend, local frontend
+- **Pydantic Warnings**: AutoGen generates harmless model warnings
+
+### Quick Fixes
+```bash
+# Restart backend container
+docker stop coder-backend && docker rm coder-backend
+docker run -d -p 8080:8080 --name coder-backend coder-backend
+
+# Frontend dependency issues
+cd frontend && rm -rf node_modules && npm install
+```
+
+## 📚 Documentation References
+- **Setup Guide**: [COOKBOOK.md](mdc:COOKBOOK.md) - Complete setup instructions
+- **Project Structure**: [README.md](mdc:README.md) - Project overview
+- **Git Ignore**: [.gitignore](mdc:.gitignore) - Excludes autogen/ directory
+
+## 🎯 Next Steps
+1. **Project Creation**: Use frontend UI to create and manage projects
+2. **File Analysis**: Upload/import code for AutoGen analysis
+3. **AI Conversations**: Chat with AutoGen about your codebase
+4. **Multi-Agent Workflows**: Leverage specialized development agents
